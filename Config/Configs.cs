@@ -1,319 +1,832 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using System.Reflection;
-using System.Text;
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Encodings.Web;
 
 namespace Reveal_Last_Alive.Config
 {
-    [AttributeUsage(AttributeTargets.Property)]
-    public class RangeAttribute : Attribute
-    {
-        public int Min { get; }
-        public int Max { get; }
-        public int Default { get; }
-        public string Message { get; }
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)] public class ForceStringAttribute : Attribute { public string FallbackValue { get; } public ForceStringAttribute(string fallbackValue) { FallbackValue = fallbackValue; } }
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)] public class StringAttribute : Attribute { public string[] Keys { get; } public StringAttribute(params string[] keys) => Keys = keys; }
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)] public class CommentAttribute : Attribute { public string Text; public CommentAttribute(string t) => Text = t; }
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)] public class BreakLineAttribute : Attribute { public string Text; public BreakLineAttribute(string t) => Text = t; }
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)] public class InfoAttribute : Attribute { public string Key { get; } public InfoAttribute(string key) => Key = key; }
+    [AttributeUsage(AttributeTargets.Property)] public class RangeAttribute : Attribute { public double Min, Max, Default; public string? Message; public RangeAttribute(double min, double max, double def, string? msg = null) { Min = min; Max = max; Default = def; Message = msg; } }
 
-        public RangeAttribute(int min, int max, int defaultValue, string message)
-        {
-            Min = min;
-            Max = max;
-            Default = defaultValue;
-            Message = message;
-        }
+    public class Reload_Plugin
+    {
+        [Comment("Note: Console_Commands Can Be Execute Via Both Console And Chat By (!)")]
+        [Comment("Making Both Console_Commands And Chat_Commands Empty = Disable")]
+        [String("Console_Commands", "Chat_Commands")]
+        public string Reload_Plugin_CommandsInGame { get; set; } = "Console_Commands: css_reloadreveal,css_reloadrla,css_reloadr | Chat_Commands: ";
+
+        [Comment("If [Reload_Plugin_CommandsInGame] Is Used, Flags Or Group Or SteamID")]
+        [Comment("Example:")]
+        [Comment("\"SteamIDs: 76561198206086993,STEAM_0:1:507335558 | Flags: @css/root,@css/admin | Groups: #css/root,#css/admin\"")]
+        [Comment("\"SteamIDs:  | Flags:  | Groups: \" = To Allow Everyone")]
+        [String("SteamIDs", "Flags", "Groups")]
+        public string Reload_Plugin_Flags { get; set; } = "SteamIDs: 76561198206086993,STEAM_0:1:507335558 | Flags: @css/root,@css/admin | Groups: #css/root,#css/admin";
+
+        [Comment("If [Reload_Plugin_CommandsInGame] Is Used, Hide Chat After Execute Reload_Plugin_CommandsInGame?:")]
+        [Comment("0 = No")]
+        [Comment("1 = Yes, But Only After Toggle Successfully")]
+        [Comment("2 = Yes, Hide All The Time")]
+        [Range(0, 2, 0,
+        "Reload_Plugin_Hide: is invalid, setting to default value (0) Please Choose From 0 To 2." +
+        "0 = No\n" +
+        "1 = Yes, But Only After Toggle Successfully\n" +
+        "2 = Yes, Hide All The Time")]
+        public int Reload_Plugin_Hide { get; set; } = 0;
     }
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class CommentAttribute : Attribute
+    public class Config
     {
-        public string Comment { get; }
+        [BreakLine("----------------------------[ ↓ Plugin Info ↓ ]----------------------------{nextline}")]
+        [Info("Version")]
+        [Info("Github")]
+        public object __InfoSection { get; set; } = null!;
 
-        public CommentAttribute(string comment)
-        {
-            Comment = comment;
-        }
+        [BreakLine("----------------------------[ ↓ Main Config ↓ ]----------------------------{nextline}")]
+
+        [Comment("Reload Reveal Last Alive Plugin")]
+        public Reload_Plugin Reload_Plugin { get; set; } = new();
+
+        [Comment("Reveal Last Player Alive On Team:")]
+        [Comment("1 = CT")]
+        [Comment("2 = T")]
+        [Comment("3 = CT + T")]
+        [Range(1, 3, 2,
+        "RevealLastPlayerOnTeam: is invalid, setting to default value (1) Please Choose From 1 To 3." +
+        "1 = CT\n" +
+        "2 = T\n" +
+        "3 = CT + T")]
+        public int RevealLastPlayerOnTeam { get; set; } = 1;
+
+        [Comment("Play Sound On Reveal")]
+        [Comment("\"\" = Disable")]
+        public string Play_Sound { get; set; } = "UIPanorama.popup_accept_match_beep";
+
+        [Comment("Required [Play_Sound Not Start With sounds/]")]
+        [Comment("Sound Volume Of Play_Sound From 0 to 100")]
+        public string Sound_Volume { get; set; } = "100%";
+
+
+        [BreakLine("----------------------------[ ↓ Chicken Config ↓ ]----------------------------{nextline}")]
+
+        [Comment("Enable Chicken On Last Player Alive?")]
+        [Comment("true = Yes")]
+        [Comment("false = No")]
+        public bool Chicken_Enable { get; set; } = true;
+
+        [Comment("Required [Chicken_Enable = true]")]
+        [Comment("Glow Only When Crosshair Near To Chicken?")]
+        [Comment("true = Yes")]
+        [Comment("false = No (Show All The Time)")]
+        public bool Chicken_GlowType { get; set; } = false;
+
+        [Comment("Required [Chicken_Enable = true]")]
+        [Comment("Whats Max Range To Show Chicken Glow")]
+        public int Chicken_GlowRange { get; set; } = 5000;
+
+        [Comment("Required [Chicken_Enable = true]")]
+        [Comment("Chicken Size")]
+        public int Chicken_Size { get; set; } = 10;
+
+        [Comment("Required [Chicken_Enable = true]")]
+        [Comment("How Would You Like Chicken Glow By (Red, Green, Blue, Alpha) Use This Site [https://rgbacolorpicker.com/]")]
+        public string Chicken_GlowColor { get; set; } = "20 , 255, 0 , 255";
+
+
+        [BreakLine("----------------------------[ ↓ Player Glow Config ↓ ]----------------------------{nextline}")]
+
+        [Comment("Enable Player Glow On Last Player Alive?")]
+        [Comment("true = Yes")]
+        [Comment("false = No")]
+        public bool Player_Enable { get; set; } = true;
+
+        [Comment("Required [Player_Enable = true]")]
+        [Comment("Glow Only When Crosshair Near To Player Glow?")]
+        [Comment("true = Yes")]
+        [Comment("false = No (Show All The Time)")]
+        public bool Player_GlowType { get; set; } = false;
+
+        [Comment("Required [Player_Enable = true]")]
+        [Comment("Whats Max Range To Show Player Glow")]
+        public int Player_GlowRange { get; set; } = 5000;
+
+        [Comment("Required [Player_Enable = true]")]
+        [Comment("How Would You Like Player Glow By (Red, Green, Blue, Alpha) Use This Site [https://rgbacolorpicker.com/]")]
+        public string Player_GlowColor { get; set; } = "20 , 255, 0 , 255";
+
+
+        [BreakLine("----------------------------[ ↓ Utilities ↓ ]----------------------------{nextline}")]
+
+        [Comment("Auto Update Signatures (In ../plugins/Reveal-Last-Alive-GoldKingZ/gamedata/gamedata.json)?")]
+        [Comment("true = Yes")]
+        [Comment("false = No")]
+        public bool AutoUpdateSignatures { get; set; } = true;
+
+        [Comment("Enable Debug Plugin In Server Console (Helps You To Debug Issues You Facing)?")]
+        [Comment("true = Yes")]
+        [Comment("false = No")]
+        public bool EnableDebug { get; set; } = false;
     }
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class BreakLineAttribute : Attribute
-    {
-        public string BreakLine { get; }
-
-        public BreakLineAttribute(string breakLine)
-        {
-            BreakLine = breakLine;
-        }
-    }
     public static class Configs
     {
-        private static readonly string ConfigDirectoryName = "config";
-        private static readonly string ConfigFileName = "config.json";
-        private static readonly string PrecacheResources = "ServerPrecacheResources.txt";
-        private static string? _PrecacheResources;
+        public static string Version = $"Version : {MainPlugin.Instance.ModuleVersion ?? "Unknown"}";
+        public static string Github = "https://github.com/oqyh/cs2-Reveal-Last-Alive-GoldKingZ";
+        public static Config Instance { get; private set; } = new Config();
+        static string? filePath;
+        static bool IsSimple(Type t) => t.IsPrimitive || t.IsEnum || t == typeof(string) || t == typeof(decimal) || t == typeof(DateTime) || t == typeof(uint);
+        static bool IsList(Type t) => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(List<>);
 
-        private static string? _configFilePath;
-        private static ConfigData? _configData;
+        private static readonly JsonSerializerOptions SimpleValueJsonOptions = new JsonSerializerOptions { WriteIndented = false, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-        private static readonly JsonSerializerOptions SerializationOptions = new()
+        public static void Load(string moduleDirectory)
         {
-            Converters =
+            string configDirectory = Path.Combine(moduleDirectory ?? ".", "config");
+            if (!Directory.Exists(configDirectory))
             {
-                new JsonStringEnumConverter()
-            },
-            WriteIndented = true,
-            AllowTrailingCommas = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-        };
-
-        public static bool IsLoaded()
-        {
-            return _configData is not null;
-        }
-
-        public static ConfigData GetConfigData()
-        {
-            if (_configData is null)
-            {
-                throw new Exception("Config not yet loaded.");
-            }
-            
-            return _configData;
-        }
-
-        public static ConfigData Load(string modulePath)
-        {
-            var configFileDirectory = Path.Combine(modulePath, ConfigDirectoryName);
-            if(!Directory.Exists(configFileDirectory))
-            {
-                Directory.CreateDirectory(configFileDirectory);
+                Directory.CreateDirectory(configDirectory);
             }
 
-            _PrecacheResources = Path.Combine(configFileDirectory, PrecacheResources);
-            Helper.CreateResource(_PrecacheResources);
+            filePath = Path.Combine(configDirectory, "config.json");
 
-            _configFilePath = Path.Combine(configFileDirectory, ConfigFileName);
-            if (File.Exists(_configFilePath))
+            if (!File.Exists(filePath)) { Save(); return; }
+
+            try
             {
-                _configData = JsonSerializer.Deserialize<ConfigData>(File.ReadAllText(_configFilePath), SerializationOptions);
-                _configData!.Validate();
-            }
-            else
-            {
-                _configData = new ConfigData();
-                _configData.Validate();
-            }
+                var json = File.ReadAllText(filePath);
 
-            if (_configData is null)
-            {
-                throw new Exception("Failed to load configs.");
-            }
+                json = RemoveTrailingCommas(json);
 
-            SaveConfigData(_configData);
-            
-            return _configData;
-        }
+                var lines = json.Split('\n').Where(l => !l.TrimStart().StartsWith("//")).ToArray();
+                json = string.Join("\n", lines);
 
-        private static void SaveConfigData(ConfigData configData)
-        {
-            if (_configFilePath is null)
-                throw new Exception("Config not yet loaded.");
-
-            string json = JsonSerializer.Serialize(configData, SerializationOptions);
-            json = Regex.Unescape(json);
-
-            var lines = json.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            var newLines = new List<string>();
-
-            foreach (var line in lines)
-            {
-                var match = Regex.Match(line, @"^\s*""(\w+)""\s*:.*");
-                bool isPropertyLine = false;
-                PropertyInfo? propInfo = null;
-
-                if (match.Success)
+                JsonNode? root = null;
+                try
                 {
-                    string propName = match.Groups[1].Value;
-                    propInfo = typeof(ConfigData).GetProperty(propName);
+                    root = JsonNode.Parse(json);
+                }
+                catch
+                {
+                    Instance = new Config();
+                    EnsureNestedDefaults(Instance);
+                    ValidateStringRecursive(Instance);
+                    ValidateRangesRecursive(Instance);
+                    ValidateForceStringRecursive(Instance);
+                    Save();
+                    return;
+                }
 
-                    var breakLineAttr = propInfo?.GetCustomAttribute<BreakLineAttribute>();
-                    if (breakLineAttr != null)
+                if (root is JsonObject rootObj)
+                {
+                    CleanJsonObjectStrict(rootObj, Instance.GetType());
+                }
+
+                string normalizedJson = root?.ToJsonString(new JsonSerializerOptions { WriteIndented = false }) ?? "{}";
+                Instance = JsonSerializer.Deserialize<Config>(normalizedJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Config();
+            }
+            catch
+            {
+                Instance = new Config();
+            }
+
+            EnsureNestedDefaults(Instance);
+            ValidateStringRecursive(Instance);
+            ValidateRangesRecursive(Instance);
+            ValidateForceStringRecursive(Instance);
+            Save();
+        }
+
+        public static void Save()
+        {
+            try
+            {
+                var path = filePath ?? Path.Combine(".", "config", "config.json");
+                string? directory = Path.GetDirectoryName(path);
+
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                var props = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+                var rendered = new List<string>();
+                foreach (var p in props)
+                {
+                    try
                     {
-                        string breakLine = breakLineAttr.BreakLine;
+                        rendered.Add(RenderProperty(p, Instance, 2));
+                    }
+                    catch
+                    {
+                    }
+                }
 
-                        if (breakLine.Contains("{space}"))
-                        {
-                            breakLine = breakLine.Replace("{space}", "").Trim();
+                string JoinJsonProperties(List<string> propsList)
+                {
+                    var filtered = propsList.Where(r => !string.IsNullOrWhiteSpace(r)).ToList();
+                    var result = new List<string>();
 
-                            if (breakLineAttr.BreakLine.StartsWith("{space}"))
+                    bool BlockContainsProperty(string block)
+                    {
+                        return block
+                            .Split('\n')
+                            .Any(line =>
                             {
-                                newLines.Add("");
-                            }
+                                var t = line.TrimStart();
+                                return t.StartsWith("\"") && t.Contains("\":");
+                            });
+                    }
 
-                            newLines.Add("// " + breakLine);
-                            newLines.Add("");
+                    for (int i = 0; i < filtered.Count; i++)
+                    {
+                        var current = filtered[i];
+                        bool isCurrentPropertyBlock = BlockContainsProperty(current);
+
+                        int nextPropIndex = -1;
+                        for (int j = i + 1; j < filtered.Count; j++)
+                        {
+                            if (BlockContainsProperty(filtered[j]))
+                            {
+                                nextPropIndex = j;
+                                break;
+                            }
+                        }
+
+                        bool hasNextProp = nextPropIndex != -1;
+                        if (isCurrentPropertyBlock && hasNextProp)
+                        {
+                            if (!current.TrimEnd().EndsWith(","))
+                            {
+                                current += ",";
+                            }
+                        }
+
+                        result.Add(current);
+                    }
+
+                    return string.Join("\n\n", result);
+                }
+
+                var body = JoinJsonProperties(rendered);
+                var final = "{\n" + body + "\n}\n";
+                File.WriteAllText(path, final);
+            }
+            catch
+            {
+            }
+        }
+
+        static void EnsureNestedDefaults(object? obj)
+        {
+            if (obj == null) return;
+
+            var props = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+            foreach (var p in props)
+            {
+                if (p.GetCustomAttributes<InfoAttribute>().Any()) continue;
+
+                if (IsList(p.PropertyType)) continue;
+
+                if (p.PropertyType == typeof(string) || p.PropertyType.IsValueType) continue;
+
+                try
+                {
+                    var val = p.GetValue(obj);
+                    if (val == null)
+                    {
+                        try
+                        {
+                            var inst = Activator.CreateInstance(p.PropertyType);
+                            if (inst != null) p.SetValue(obj, inst);
+                        }
+                        catch { }
+                    }
+                    EnsureNestedDefaults(p.GetValue(obj));
+                }
+                catch (TargetParameterCountException)
+                {
+                    continue;
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        public static void ValidateStringRecursive(object? obj)
+        {
+            if (obj == null) return;
+
+            var props = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+            foreach (var prop in props)
+            {
+                if (prop.GetCustomAttributes<InfoAttribute>().Any() && obj is Config) continue;
+
+                if (prop.PropertyType == typeof(string))
+                {
+                    if (prop.GetCustomAttribute<StringAttribute>() is StringAttribute attr)
+                    {
+                        try
+                        {
+                            var current = prop.GetValue(obj) as string;
+                            prop.SetValue(obj, string.Join(" | ", attr.Keys.Select(key =>
+                                $"{key}: {GetStringValue(current, key)}")));
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+                else if (!IsSimple(prop.PropertyType) && !IsList(prop.PropertyType))
+                {
+                    try
+                    {
+                        ValidateStringRecursive(prop.GetValue(obj));
+                    }
+                    catch (TargetParameterCountException)
+                    {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        public static string GetStringValue(string? input, string key)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "";
+
+            return input.Split('|')
+                .Select(segment => segment.Trim())
+                .FirstOrDefault(segment => segment.StartsWith(key + ":", StringComparison.OrdinalIgnoreCase))?
+                .Substring(key.Length + 1)
+                .Trim() ?? "";
+        }
+
+        static void ValidateRangesRecursive(object? obj)
+        {
+            if (obj == null) return;
+
+            var props = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+            foreach (var p in props)
+            {
+                if (p.GetCustomAttributes<InfoAttribute>().Any()) continue;
+
+                try
+                {
+                    var range = p.GetCustomAttribute<RangeAttribute>();
+                    var val = p.GetValue(obj);
+                    if (range != null && val != null)
+                    {
+                        if (double.TryParse(Convert.ToString(val), out double d))
+                        {
+                            if (d < range.Min || d > range.Max)
+                            {
+                                if (!string.IsNullOrEmpty(range.Message))
+                                {
+                                    var messageLines = range.Message.Replace("\\n", "\n").Split('\n');
+                                    foreach (var line in messageLines)
+                                    {
+                                        if (!string.IsNullOrWhiteSpace(line))
+                                        {
+                                            Helper.DebugMessage(line.Trim(), true);
+                                        }
+                                    }
+                                }
+                                p.SetValue(obj, Convert.ChangeType(range.Default, p.PropertyType));
+                            }
+                        }
+                    }
+                    if (!IsSimple(p.PropertyType) && !IsList(p.PropertyType))
+                    {
+                        ValidateRangesRecursive(p.GetValue(obj));
+                    }
+                }
+                catch (TargetParameterCountException)
+                {
+                    continue;
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        static void ValidateForceStringRecursive(object? obj)
+        {
+            if (obj == null) return;
+
+            var props = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+            foreach (var prop in props)
+            {
+                if (prop.GetCustomAttributes<InfoAttribute>().Any()) continue;
+
+                try
+                {
+                    if (prop.PropertyType == typeof(string))
+                    {
+                        if (prop.GetCustomAttribute<ForceStringAttribute>() is ForceStringAttribute forceAttr)
+                        {
+                            var current = prop.GetValue(obj) as string;
+                            if (string.IsNullOrWhiteSpace(current))
+                            {
+                                prop.SetValue(obj, forceAttr.FallbackValue);
+                            }
+                        }
+                    }
+                    else if (!IsSimple(prop.PropertyType) && !IsList(prop.PropertyType))
+                    {
+                        ValidateForceStringRecursive(prop.GetValue(obj));
+                    }
+                }
+                catch (TargetParameterCountException)
+                {
+                    continue;
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        static IEnumerable<string> RenderCommentLines(string? text, string pad)
+        {
+            if (string.IsNullOrWhiteSpace(text)) yield break;
+            var lines = text.Replace("\r", "").Split('\n');
+            foreach (var raw in lines)
+            {
+                var t = raw.TrimEnd();
+                if (string.IsNullOrWhiteSpace(t))
+                {
+                    yield return pad + "//";
+                }
+                else if (t == "{nextline}")
+                {
+                    yield return "";
+                }
+                else
+                {
+                    yield return pad + "// " + t;
+                }
+            }
+        }
+        private static string RemoveTrailingCommas(string json)
+        {
+            json = System.Text.RegularExpressions.Regex.Replace(json, @",(\s*[]])", "$1");
+            json = System.Text.RegularExpressions.Regex.Replace(json, @",(\s*[}])", "$1");
+            return json;
+        }
+
+        static string RenderProperty(PropertyInfo p, object? instance, int indent)
+        {
+            var pad = new string(' ', indent);
+            var parts = new List<string>();
+
+            try
+            {
+                var br = p.GetCustomAttribute<BreakLineAttribute>();
+                if (br != null)
+                {
+                    var txt = br.Text ?? "";
+
+                    bool emptyLineBefore = txt.StartsWith("{nextline}");
+                    bool emptyLineAfter = txt.EndsWith("{nextline}");
+
+                    if (emptyLineBefore) txt = txt.Substring("{nextline}".Length);
+                    if (emptyLineAfter) txt = txt.Substring(0, txt.Length - "{nextline}".Length);
+
+                    txt = txt.Trim();
+
+                    if (emptyLineBefore)
+                        parts.Add(string.Empty);
+
+                    foreach (var line in RenderCommentLines(txt, pad))
+                        parts.Add(line);
+
+                    if (emptyLineAfter)
+                        parts.Add(string.Empty);
+                }
+
+                var infos = p.GetCustomAttributes<InfoAttribute>();
+                foreach (var info in infos)
+                {
+                    string text = info.Key switch
+                    {
+                        "Version" => Version,
+                        "Github" => Github,
+                        _ => info.Key
+                    };
+                    foreach (var line in RenderCommentLines(text, pad))
+                        parts.Add(line);
+                }
+
+                var comments = p.GetCustomAttributes<CommentAttribute>();
+                foreach (var comment in comments)
+                {
+                    foreach (var line in RenderCommentLines(comment.Text, pad))
+                        parts.Add(line);
+                }
+
+                if (p.GetCustomAttributes<InfoAttribute>().Any() && (p.PropertyType == typeof(object) || p.PropertyType == typeof(void)))
+                    return string.Join("\n", parts);
+
+                var val = p.GetValue(instance);
+                if (IsSimple(p.PropertyType))
+                {
+                    var jsonVal = JsonSerializer.Serialize(val, SimpleValueJsonOptions);
+                    parts.Add(pad + $"\"{p.Name}\": {jsonVal}");
+                }
+                else if (IsList(p.PropertyType))
+                {
+                    parts.Add(pad + $"\"{p.Name}\":");
+                    parts.Add(pad + "[");
+
+                    if (val is System.Collections.IList list && list.Count > 0)
+                    {
+                        var listItems = new List<string>();
+                        var elementType = p.PropertyType.GetGenericArguments()[0];
+
+                        if (IsSimple(elementType))
+                        {
+                            foreach (var item in list)
+                            {
+                                if (item != null)
+                                {
+                                    var jsonVal = JsonSerializer.Serialize(item, SimpleValueJsonOptions);
+                                    listItems.Add(pad + "  " + jsonVal);
+                                }
+                            }
+                            parts.Add(string.Join(",\n", listItems));
                         }
                         else
                         {
-                            newLines.Add("// " + breakLine);
+                            foreach (var item in list)
+                            {
+                                if (item != null)
+                                {
+                                    var itemProps = item.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                                        .Where(ip => ip.CanRead && ip.GetIndexParameters().Length == 0);
+                                    var itemLines = new List<string>();
+                                    foreach (var ip in itemProps)
+                                    {
+                                        try
+                                        {
+                                            itemLines.Add(RenderProperty(ip, item, indent + 4));
+                                        }
+                                        catch
+                                        {
+                                        }
+                                    }
+                                    var filtered = itemLines.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+                                    var itemJson = string.Join(",\n", filtered);
+                                    listItems.Add(pad + "  {\n" + itemJson + "\n" + pad + "  }");
+                                }
+                            }
+                            parts.Add(string.Join(",\n", listItems));
                         }
                     }
 
-                    var commentAttr = propInfo?.GetCustomAttribute<CommentAttribute>();
-                    if (commentAttr != null)
+                    parts.Add(pad + "]");
+                }
+                else
+                {
+                    if (val == null)
                     {
-                        var commentLines = commentAttr.Comment.Split('\n');
-                        foreach (var commentLine in commentLines)
-                        {
-                            newLines.Add("// " + commentLine.Trim());
-                        }
+                        parts.Add(pad + $"\"{p.Name}\": null");
                     }
+                    else
+                    {
+                        parts.Add(pad + $"\"{p.Name}\":");
+                        parts.Add(pad + "{");
 
-                    isPropertyLine = true;
-                }
+                        var innerProps = p.PropertyType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                            .Where(ip => ip.CanRead && ip.GetIndexParameters().Length == 0);
 
-                newLines.Add(line);
+                        var innerLines = new List<string>();
+                        foreach (var ip in innerProps)
+                        {
+                            try
+                            {
+                                innerLines.Add(RenderProperty(ip, val, indent + 2));
+                            }
+                            catch
+                            {
+                            }
+                        }
 
-                if (isPropertyLine && propInfo?.GetCustomAttribute<CommentAttribute>() != null)
-                {
-                    newLines.Add("");
+                        var filtered = innerLines.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+                        var innerJoined = string.Join(",\n\n", filtered);
+                        if (!string.IsNullOrEmpty(innerJoined)) parts.Add(innerJoined);
+
+                        parts.Add(pad + "}");
+                    }
                 }
             }
-
-            var adjustedLines = new List<string>();
-            foreach (var line in newLines)
+            catch
             {
-                adjustedLines.Add(line);
-                if (Regex.IsMatch(line, @"^\s*\],?\s*$"))
-                {
-                    adjustedLines.Add("");
-                }
+                return "";
             }
 
-            File.WriteAllText(_configFilePath, string.Join(Environment.NewLine, adjustedLines), Encoding.UTF8);
+            return string.Join("\n", parts);
         }
 
-        public class ConfigData
+        static void CleanJsonObjectStrict(JsonObject jsonObj, Type targetType)
         {
-            private string? _Version;
-            private string? _Link;
-            [BreakLine("----------------------------[ ↓ Plugin Info ↓ ]----------------------------{space}")]
-            public string Version
+            if (jsonObj == null || targetType == null) return;
+
+            var props = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                .Where(p => !p.GetCustomAttributes<InfoAttribute>().Any() && p.GetIndexParameters().Length == 0)
+                                .ToList();
+            var map = props.ToDictionary(p => p.Name.ToLowerInvariant(), p => p);
+
+            foreach (var key in jsonObj.Select(kv => kv.Key).ToList())
             {
-                get => _Version!;
-                set
+                var keyLower = key.ToLowerInvariant();
+                if (!map.TryGetValue(keyLower, out var prop))
                 {
-                    _Version = value;
-                    if (_Version != MainPlugin.Instance.ModuleVersion)
-                    {
-                        Version = MainPlugin.Instance.ModuleVersion;
-                    }
+                    jsonObj.Remove(key);
+                    continue;
                 }
-            }
 
-            public string Link
-            {
-                get => _Link!;
-                set
+                var expectedType = prop.PropertyType;
+                var underlying = Nullable.GetUnderlyingType(expectedType) ?? expectedType;
+                var node = jsonObj[key];
+                if (node == null) continue;
+
+                if (IsSimple(underlying) || underlying.IsEnum)
                 {
-                    _Link = value;
-                    if (_Link != "https://github.com/oqyh/cs2-Reveal-Last-Alive-GoldKingZ")
+                    if (node is JsonValue jv)
                     {
-                        Link = "https://github.com/oqyh/cs2-Reveal-Last-Alive-GoldKingZ";
-                    }
-                }
-            }
-
-            [BreakLine("{space}----------------------------[ ↓ Main Config ↓ ]----------------------------{space}")]
-
-            [Comment("Reveal Last Player Alive On Team:\n1 = CT\n2 = T")]
-            [Range(1, 2, 1, "[Last Alive] RevealLastPlayerOnTeam: is invalid, setting to default value (1) Please Choose From 1 To 2.\n[Last Alive] 1 = CT\n[Last Alive] 2 = T")]
-            public int RevealLastPlayerOnTeam { get; set; }
-
-            [Comment("Play Sound On Reveal\nExample:\n sounds/ui/competitive_accept_beep.vsnd (Will Not Support Volume)\n UIPanorama.popup_accept_match_beep (Support Volume)\n\"\" = Disable")]
-            public string Play_Sound { get; set; }
-
-            [Comment("Required [Play_Sound Not Start With sounds/]\n Sound Volume Of Play_Sound From 0 to 100")]
-            public string Sound_Volume { get; set; }
-
-
-            [BreakLine("{space}----------------------------[ ↓ Chicken Config ↓ ]----------------------------{space}")]
-            [Comment("Enable Chicken On Last Player Alive?\ntrue = Yes\nfalse = No")]
-            public bool Chicken_Enable { get; set; }
-
-            [Comment("Required [Chicken_Enable = true]\nGlow Only When Crosshair Near To Chicken?\ntrue = Yes\nfalse = No (Show All The Time)")]
-            public bool Chicken_GlowType { get; set; }
-
-            [Comment("Required [Chicken_Enable = true]\nWhats Max Range To Show Chicken Glow")]
-            public int Chicken_GlowRange { get; set; }
-
-
-            [Comment("Required [Chicken_Enable = true]\nChicken Size")]
-            public int Chicken_Size { get; set; }
-
-            [Comment("Required [Chicken_Enable = true]\nHow Would You Like Chicken Glow Color To Be Use This Site (https://htmlcolorcodes.com/color-picker) For Color Pick")]
-            public string Chicken_GlowColor { get; set; }            
-
-
-
-            [BreakLine("{space}----------------------------[ ↓ Player Glow Config ↓ ]----------------------------{space}")]
-            [Comment("Enable Player Glow On Last Player Alive?\ntrue = Yes\nfalse = No")]
-            public bool Player_Enable { get; set; }
-
-            [Comment("Required [Player_Enable = true]\nGlow Only When Crosshair Near To Player Glow?\ntrue = Yes\nfalse = No (Show All The Time)")]
-            public bool Player_GlowType { get; set; }
-
-            [Comment("Required [Player_Enable = true]\nWhats Max Range To Show Player Glow")]
-            public int Player_GlowRange { get; set; }
-
-            [Comment("Required [Player_Enable = true]\nHow Would You Like Player Glow Color To Be Use This Site (https://htmlcolorcodes.com/color-picker) For Color Pick")]
-            public string Player_GlowColor { get; set; }     
-
-            [BreakLine("{space}----------------------------[ ↓ Utilities  ↓ ]----------------------------{space}")]
-
-            [Comment("Auto Update Signatures (In ../Reveal-Last-Alive-GoldKingZ/gamedata/)?\ntrue = Yes\nfalse = No")]
-            public bool AutoUpdateSignatures { get; set; }
-
-            [Comment("Enable Debug Plugin In Server Console (Helps You To Debug Issues You Facing)?\ntrue = Yes\nfalse = No")]
-            public bool EnableDebug { get; set; }
-
-            public ConfigData()
-            {
-                Version = MainPlugin.Instance.ModuleVersion;
-                Link = "https://github.com/oqyh/cs2-Reveal-Last-Alive-GoldKingZ";
-
-                RevealLastPlayerOnTeam = 1;
-                Play_Sound = "UIPanorama.popup_accept_match_beep";
-                Sound_Volume = "10%";
-
-                Chicken_Enable = true;
-                Chicken_GlowType = false;
-                Chicken_GlowRange = 5000;
-                Chicken_Size = 10;
-                Chicken_GlowColor = "#14ff00";
-
-                Player_Enable = true;
-                Player_GlowType = false;
-                Player_GlowRange = 5000;
-                Player_GlowColor = "#14ff00";
-
-                AutoUpdateSignatures = true;
-                EnableDebug = false;
-            }
-            public void Validate()
-            {
-                foreach (var prop in GetType().GetProperties())
-                {
-                    var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
-                    if (rangeAttr != null && prop.PropertyType == typeof(int))
-                    {
-                        int value = (int)prop.GetValue(this)!;
-                        if (value < rangeAttr.Min || value > rangeAttr.Max)
+                        if (!JsonValueIsExactType(jv, underlying))
                         {
-                            prop.SetValue(this, rangeAttr.Default);
-                            Helper.DebugMessage(rangeAttr.Message,false);
+                            jsonObj.Remove(key);
+                        }
+                    }
+                    else
+                    {
+                        jsonObj.Remove(key);
+                    }
+                }
+                else if (IsList(underlying))
+                {
+                    if (!(node is JsonArray))
+                    {
+                        jsonObj.Remove(key);
+                    }
+                    else
+                    {
+                        var array = node.AsArray();
+                        var itemType = underlying.GetGenericArguments()[0];
+
+                        for (int i = array.Count - 1; i >= 0; i--)
+                        {
+                            var item = array[i];
+                            if (IsSimple(itemType))
+                            {
+                                if (!(item is JsonValue jvItem) || !JsonValueIsExactType(jvItem, itemType))
+                                {
+                                    if (itemType == typeof(string) && item is JsonValue jv)
+                                    {
+                                        try
+                                        {
+                                            if (jv.TryGetValue<int>(out int intVal))
+                                            {
+                                                array[i] = JsonValue.Create(intVal.ToString());
+                                                continue;
+                                            }
+                                            if (jv.TryGetValue<double>(out double doubleVal))
+                                            {
+                                                array[i] = JsonValue.Create(doubleVal.ToString());
+                                                continue;
+                                            }
+                                            if (jv.TryGetValue<long>(out long longVal))
+                                            {
+                                                array[i] = JsonValue.Create(longVal.ToString());
+                                                continue;
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            array.RemoveAt(i);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        array.RemoveAt(i);
+                                    }
+                                }
+                            }
+                            else if (item is JsonObject itemObj)
+                            {
+                                CleanJsonObjectStrict(itemObj, itemType);
+                            }
+                            else if (!(item is JsonObject))
+                            {
+                                array.RemoveAt(i);
+                            }
                         }
                     }
                 }
+                else
+                {
+                    if (node is JsonObject childObj)
+                    {
+                        CleanJsonObjectStrict(childObj, underlying);
+                    }
+                    else
+                    {
+                        jsonObj.Remove(key);
+                    }
+                }
+            }
+        }
+
+        static bool JsonValueIsExactType(JsonValue jv, Type clrType)
+        {
+            try
+            {
+                var t = clrType;
+                if (t == typeof(bool))
+                {
+                    try { jv.GetValue<bool>(); return true; } catch { return false; }
+                }
+
+                if (t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(byte) ||
+                    t == typeof(uint) || t == typeof(ulong) || t == typeof(ushort) || t == typeof(sbyte))
+                {
+                    try
+                    {
+                        jv.GetValue<long>();
+                        return true;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+
+                if (t == typeof(double) || t == typeof(float) || t == typeof(decimal))
+                {
+                    try { jv.GetValue<double>(); return true; } catch { return false; }
+                }
+
+                if (t == typeof(string))
+                {
+                    try { jv.GetValue<string>(); return true; } catch { return false; }
+                }
+
+                if (t == typeof(DateTime))
+                {
+                    try
+                    {
+                        var s = jv.GetValue<string>();
+                        return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _);
+                    }
+                    catch { return false; }
+                }
+
+                if (t.IsEnum)
+                {
+                    try
+                    {
+                        var s = jv.GetValue<string>();
+                        if (!string.IsNullOrEmpty(s))
+                        {
+                            var names = Enum.GetNames(t);
+                            if (names.Any(n => string.Equals(n, s, StringComparison.OrdinalIgnoreCase)))
+                                return true;
+                        }
+                    }
+                    catch { }
+
+                    try
+                    {
+                        var v = jv.GetValue<long>();
+                        return true;
+                    }
+                    catch { }
+
+                    return false;
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
     }

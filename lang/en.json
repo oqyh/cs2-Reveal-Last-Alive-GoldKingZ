@@ -1,3 +1,6 @@
 {
-	"PrintChatToAll.LastPlayer.Alive": "{green}[Last Alive] {grey}Revealing Last Player Alive {yellow}{0}"
+	"PrintToChatToPlayer.ReloadPlugin.Not.Allowed": "{green}[Reveal Last Alive] {darkred}You Dont Have Permission",
+	"PrintToChatToPlayer.ReloadPlugin.Successfully": "{green}[Reveal Last Alive] {grey}Plugin Reloaded {lime}Successfully",
+
+	"PrintToChatToAll.LastPlayer.Alive": "{green}[Reveal Last Alive] {grey}Revealing Last Player Alive {yellow}{0}"
 }
