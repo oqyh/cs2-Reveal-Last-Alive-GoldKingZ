@@ -1,6 +1,15 @@
-## .:[ Join Our Discord For Support ]:.
+---
+<h2 align="center">.:[ Community | Support ]:.</h2>
+<p align="center">
+  <a href="https://discord.com/invite/U7AuQhu">
+    <img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white" />
+  </a>
+  <a href="https://ko-fi.com/goldkingz">
+    <img src="https://img.shields.io/badge/Ko--fi-Support-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" />
+  </a>
+</p>
 
-<a href="https://discord.com/invite/U7AuQhu"><img src="https://discord.com/api/guilds/651838917687115806/widget.png?style=banner2"></a>
+---
 
 # [CS2] Reveal-Last-Alive-GoldKingZ (1.0.1)
 
