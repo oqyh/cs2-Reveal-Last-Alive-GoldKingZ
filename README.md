@@ -110,6 +110,7 @@ Reveal Last Player Alive By Glow/Chicken
 
 ### [1.0.1]
 - Fix Bug Method not found: 'CounterStrikeSharp.API.Modules.Utils.QAngle'
+- Added ConVar gkz_reveal To Enable/Disable
 - Added Reload_Plugin_CommandsInGame
 - Added Reload_Plugin_Flags
 - Added Reload_Plugin_Hide
